@@ -4,7 +4,7 @@
 
 ## 一.基础
 
-**并发和并行**
+### **并发和并行**
 
 并发：是在同一个实体上的多个事件，是在一台处理器上“同时”处理多个任务，同一时刻只有一个事件发生
 
@@ -18,7 +18,7 @@ JVM 中同步是基于进入和退出监视器对象（管程对象）来实现�
 
 
 
-**用户线程和守护线程**
+### **用户线程和守护线程**
 
 用户线程：是系统的工作线程，它会完成这个程序需要完成的业务操作
 
@@ -33,7 +33,7 @@ JVM 中同步是基于进入和退出监视器对象（管程对象）来实现�
 
 
 
-**Future 接口**
+### **Future 接口**
 
 Future 接口（FutureTask 实现类）定义了操作执行异步任务的一些方法，如获取异步任务的执行结果、取消任务的执行、判断任务是否被取消、判断任务执行是否完毕等
 
@@ -49,7 +49,9 @@ FutureTask 实现 RunnableFuture -> Future、Runnable
 
 
 
-FutureTask + 线程池多线程实战
+优点：FutureTask + 线程池能显著提高程序的执行效率
+
+多线程实战
 
 ```java
 public class FutureThreadPoolDemo {
@@ -96,3 +98,111 @@ public class FutureThreadPoolDemo {
 
 ```
 
+缺点：
+
+1. get 方法容易阻塞（一旦调用必须等到结果才会离开，不管是否计算完成，容易程序堵塞）
+
+   ```java
+       @SneakyThrows
+       public static void main(String[] args) {
+           FutureTask<String> futureTask = new FutureTask<>(() -> {
+               System.out.println(Thread.currentThread().getName() + "\t ----come in");
+               TimeUnit.SECONDS.sleep(5);
+               return "task over";
+           });
+           Thread t1 = new Thread(futureTask, "t1");
+           t1.start();
+           System.out.println(futureTask.get());
+           System.out.println(Thread.currentThread().getName() + "\t ----忙其他任务了");
+       }
+   ```
+
+   输出结果（先执行子线程，执行完才执行 main 线程  -> 阻塞了主线程的执行）：
+
+   ```
+   t1	 ----come in
+   task over
+   main	 ----忙其他任务了
+   ```
+
+   > 解决方法：通过指定等待时间来避免，过时不候
+   >
+   > System.*out*.println(futureTask.get(3, TimeUnit.*SECONDS*));  这样子就会抛出超时异常，因为子线程执行时间为 5 秒
+
+2. isDone 轮询：轮询会耗费无谓的 CPU 的资源，也不能及时获取计算结果
+
+   ```java
+       @SneakyThrows
+       public static void main(String[] args) {
+           FutureTask<String> futureTask = new FutureTask<>(() -> {
+               System.out.println(Thread.currentThread().getName() + "\t ----come in");
+               TimeUnit.SECONDS.sleep(5);
+               return "task over";
+           });
+           Thread t1 = new Thread(futureTask, "t1");
+           t1.start();
+           System.out.println(Thread.currentThread().getName() + "\t ----忙其他任务了");
+           while(true) {
+               if (futureTask.isDone()) {
+                   System.out.println(futureTask.get());
+                   break;
+               } else {
+                   TimeUnit.MILLISECONDS.sleep(500);
+                   System.out.println("正在处理中，不要在催了，越催越慢，再催熄火");
+               }
+           }
+       }
+   ```
+
+结论：Future 对于结果的获取不是很友好，只能通过阻塞方式或轮询的方式获取任务的结果
+
+
+
+### CompletableFuture
+
+作用：
+
+1. 可将多个异步任务的计算结果组合起来，后一个异步任务的计算结果依赖前一个结果
+2. 将两个或多个异步计算合成一个计算，这个几个异步计算相互独立
+
+CompletableFuture 提供了一种类似观察者模式的机制，当任务执行完成会通知监听方
+
+**类架构说明**：
+
+<img src="https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240703210335.png" alt="image-20240703210335363" style="zoom:50%;" />
+
+**CompletionStage 代表异步计算过程中的某一阶段，一个阶段完成后会触发另一个阶段**
+
+
+
+创建异步任务的 2 种方式：
+
+![image-20240703211447152](https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240703211447.png)
+
+1. runAsync 无返回值
+
+   ```java
+       @SneakyThrows
+       public static void main(String[] args) {
+           CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
+               System.out.println(Thread.currentThread().getName() + "\t -----come in");
+               try {
+                   TimeUnit.SECONDS.sleep(1);
+               } catch (InterruptedException e) {
+                   e.printStackTrace();
+               }
+               System.out.println("task is over");
+           });
+           System.out.println(completableFuture.get());
+       }
+   ```
+
+   输出内容：
+
+   ```
+   ForkJoinPool.commonPool-worker-9	 -----come in
+   task is over
+   null
+   ```
+
+2. supplyAsync 有返回值
