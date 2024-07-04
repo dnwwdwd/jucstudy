@@ -175,7 +175,9 @@ CompletableFuture 提供了一种类似观察者模式的机制，当任务执�
 
 
 
-创建异步任务的 2 种方式：
+#### 获取结果和触发计算
+
+**创建异步任务的 2 种方式：**
 
 ![image-20240703211447152](https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240703211447.png)
 
@@ -205,4 +207,58 @@ CompletableFuture 提供了一种类似观察者模式的机制，当任务执�
    null
    ```
 
-2. supplyAsync 有返回值
+2. **supplyAsync 有返回值**
+
+   - get 方法阻塞主线程
+   - get(timeout, TimeUnit) 过时不候，未在规定时间内执行完就抛异常
+   - getNow 立即获取结果，计算完就获取计算完的结果，否则就获取设定的值。立即获取结果不阻塞
+   - complet 方法返回的是布尔值，true 代表打断了 get 方法，反之代表未打断
+
+**CompletableFuture 的优点：**
+
+1. 异步任务结束后会自动回调某个对象的方法
+2. 主线程设置好回调后，不再关心异步任务的执行，异步任务之间可顺序执行
+3. 异步任务出错时，会自动回调某个对象的方法
+
+![image-20240704203719101](https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240704203719.png)
+
+CompletableFuture get 方法和 join 方法的区别：
+
+1. **异常处理**：
+
+   - `get()` 方法声明了 `throws InterruptedException, ExecutionException`，因此必须处理这两个异常，否则会编译错误。
+   - `join()` 方法没有声明抛出任何受检异常，因此在处理结果时更加方便，不需要显式捕获异常。
+
+2. **返回值**：
+
+   - `get()` 方法返回 `T` 类型的结果或抛出异常（`ExecutionException` 包装实际异常）。
+   - `join()` 方法直接返回 `T` 类型的结果，或者如果有异常，会抛出 `CompletionException`，该异常会包装实际异常。
+
+3. **使用场景**：
+
+   - 如果你希望在获取结果时能够处理异常，可以使用 `join()` 方法，因为它简化了异常处理的过程。
+   - 如果你需要对 `InterruptedException` 和 `ExecutionException` 进行精细的处理或转换，你可能更倾向于使用 `get()` 方法。
+
+   
+
+#### 对计算结果进行处理
+
+**thenApply**
+
+1. 计算结果存在依赖关系，这两个线程串行化
+2. 异常相关，当前出现异常，不走下一步，并且后面都不走
+
+**handle**
+
+1. 计算结果存在依赖关系，这两个线程串行化
+2. 异常相关，当前出现异常，不走下一步，但是后面的继续走，根据带的异常参数进一步处理
+
+![image-20240704220124675](https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240704220124.png)
+
+总结：简单一点理解就是一个是并行的一个是串行的,串行的A步骤G了,就直接去处理异常的步骤了,并行的调用步骤A G了,就当没发生过直接去调用步骤B
+
+
+
+#### 任务之间顺序执行
+
+![image-20240704221113218](https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240704221113.png)

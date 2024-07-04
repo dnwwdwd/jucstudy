@@ -15,6 +15,7 @@ public class FutureApiDemo {
         });
         Thread t1 = new Thread(futureTask, "t1");
         t1.start();
+        futureTask.get(2L, TimeUnit.SECONDS);
         System.out.println(Thread.currentThread().getName() + "\t ----忙其他任务了");
     }
 }
