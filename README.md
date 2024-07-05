@@ -262,3 +262,87 @@ CompletableFuture get 方法和 join 方法的区别：
 #### 任务之间顺序执行
 
 ![image-20240704221113218](https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240704221113.png)
+
+#### 对计算结果进行消费
+
+![image-20240705210126340](https://hejiajun-img-bucket.oss-cn-wuhan-lr.aliyuncs.com/img/20240705210126.png)
+
+#### 对计算结果进行选用
+
+> 那个线程执行快，applyToEither 方法就返回谁
+
+```java
+public class CompletableFutureFastDemo {
+    public static void main(String[] args) {
+        CompletableFuture<String> playA = CompletableFuture.supplyAsync(() -> {
+            System.out.println("A come in");
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return "playA";
+        });
+
+        CompletableFuture<String> playB = CompletableFuture.supplyAsync(() -> {
+            System.out.println("B come in");
+            try {
+                TimeUnit.SECONDS.sleep(3);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return "playB";
+        });
+
+        CompletableFuture<String> result = playA.applyToEither(playB, f -> {
+            return f + "is winner";
+        });
+        System.out.println(Thread.currentThread().getName() + "\t" + result.join());
+    }
+}
+```
+
+#### 对计算结果合并
+
+```java
+public class CompletableFutureCombineDemo {
+    public static void main(String[] args) {
+        CompletableFuture<Integer> completableFuture1 = CompletableFuture.supplyAsync(() -> {
+            System.out.println(Thread.currentThread().getName() + "\t ----启动");
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return 10;
+        });
+
+        CompletableFuture<Integer> completableFuture2 = CompletableFuture.supplyAsync(() -> {
+            System.out.println(Thread.currentThread().getName() + "\t ----启动");
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return 20;
+        });
+
+        completableFuture1.thenCombine(completableFuture2, (x, y) -> {
+            System.out.println("开始两个结果合并");
+            return x + y;
+        });
+    }
+```
+
+
+
+### 说说那些”锁“事
+
+#### 乐观锁和悲观锁
+
+乐观锁：认为使用数据时不会有别的线程修改数据或资源，因此不会加锁，而是通过版本号或者 CAS 算法来判断有无被修改（适合读操作多的场景）
+
+悲观锁：认为使用数据时有别的线程会修改数据，因此会加锁来保证数据不被其他线程修改（适合写操作多的场景）
+
+
+
