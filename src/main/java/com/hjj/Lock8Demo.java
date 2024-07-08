@@ -56,6 +56,5 @@ public class Lock8Demo {
             // phone.hello();
             phone.sendMsg();
         }, "b").start();
-
     }
 }
