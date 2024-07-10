@@ -32,7 +32,7 @@ public class ReEntryLockDemo {
                 try {
                     System.out.println(Thread.currentThread().getName() + "\t -----come in 内层调用");
                 } finally {
-                    // lock.unlock();
+                    lock.unlock();
                 }
             } finally {
                 lock.unlock();
@@ -50,6 +50,6 @@ public class ReEntryLockDemo {
     }
 
     private static void reEntryM1 () {
-
     }
+
 }
